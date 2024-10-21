@@ -81,8 +81,8 @@ spec:
       - name: gitlab
         image: benjameto/my-gitlab-docker:latest
         ports:
-        - containerPort: 8080
-        - containerPort: 50000
+        - containerPort: 7070
+        - containerPort: 45000
         volumeMounts:
         - name: gitlab-home
           mountPath: /var/gitlab_home
@@ -108,9 +108,9 @@ metadata:
 spec:
   type: NodePort
   ports:
-    - port: 8088
-      targetPort: 8088
-      nodePort: 30001
+    - port: 7070
+      targetPort: 7070
+      nodePort: 30100
   selector:
     app: gitlab
      
