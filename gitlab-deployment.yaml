@@ -1,66 +1,3 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-    name: gitlab
-
----
-
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-    name: gitlab
-    namespace: gitlab
-
----
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: gitlab
-rules:
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["create","delete","get","list","patch","update","watch"]
-  - apiGroups: [""]
-    resources: ["pods/exec"]
-    verbs: ["create","delete","get","list","patch","update","watch"]
-  - apiGroups: [""]
-    resources: ["pods/log"]
-    verbs: ["get","list","watch"]
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get"]
-
----
-
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: gitlab
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: gitlab
-subjects:
-- kind: ServiceAccount
-  name: gitlab
-  namespace: gitlab
-
----
-
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: gitlab-pv-claim
-  namespace: gitlab
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 3Gi
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -76,41 +13,44 @@ spec:
       labels:
         app: gitlab
     spec:
-      serviceAccountName: gitlab
       containers:
       - name: gitlab
-        image: benjameto/my-gitlab-docker:latest
+        image: gitlab/gitlab-ce:latest
         ports:
-        - containerPort: 7070
-        - containerPort: 45000
+        - containerPort: 80   # Puerto HTTP
+        - containerPort: 443  # Puerto HTTPS
+        - containerPort: 22   # Puerto SSH
         volumeMounts:
-        - name: gitlab-home
-          mountPath: /var/gitlab_home
-        - name: docker-sock
-          mountPath: /var/run/docker.sock
-        securityContext:
-          runAsUser: 0
-          runAsGroup: 994
+        - name: gitlab-data
+          mountPath: /var/opt/gitlab
+        - name: gitlab-logs
+          mountPath: /var/log/gitlab
+        - name: gitlab-config
+          mountPath: /etc/gitlab
       volumes:
-      - name: gitlab-home
+      - name: gitlab-data
         persistentVolumeClaim:
-          claimName: gitlab-pv-claim
-      - name: docker-sock
-        hostPath:
-          path: /var/run/docker.sock
-
+          claimName: gitlab-data-pvc
+      - name: gitlab-logs
+        persistentVolumeClaim:
+          claimName: gitlab-logs-pvc
+      - name: gitlab-config
+        persistentVolumeClaim:
+          claimName: gitlab-config-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: gitlab
+  name: gitlab-service
   namespace: gitlab
 spec:
   type: NodePort
   ports:
-    - port: 7070
-      targetPort: 7070
-      nodePort: 30100
+    - port: 80       # Exponer el puerto HTTP
+      targetPort: 80
+      nodePort: 30080  # Puerto en el nodo
+    - port: 443      # Exponer el puerto HTTPS
+      targetPort: 443
+      nodePort: 30443
   selector:
     app: gitlab
-     
