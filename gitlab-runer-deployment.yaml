@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-runner
+  namespace: gitlab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gitlab-runner
+  template:
+    metadata:
+      labels:
+        app: gitlab-runner
+    spec:
+      serviceAccountName: gitlab  # Vincular con el ServiceAccount
+      containers:
+      - name: gitlab-runner
+        image: gitlab/gitlab-runner:latest
+        volumeMounts:
+        - name: docker-sock
+          mountPath: /var/run/docker.sock  # Montar el socket de Docker
+      volumes:
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
