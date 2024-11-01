@@ -17,24 +17,36 @@ spec:
       - name: gitlab
         image: gitlab/gitlab-ce:latest
         ports:
-        - containerPort: 80   # Puerto HTTP
-        - containerPort: 443  # Puerto HTTPS
-        - containerPort: 22   # Puerto SSH
+        - containerPort: 80
+        - containerPort: 443
+        - containerPort: 22
         volumeMounts:
-        - name: gitlab-data
-          mountPath: /var/opt/gitlab
-        - name: gitlab-logs
-          mountPath: /var/log/gitlab
-        - name: gitlab-config
-          mountPath: /etc/gitlab
+        - mountPath: /var/opt/gitlab
+          name: gitlab-data-storage
+        - mountPath: /var/log/gitlab
+          name: gitlab-logs-storage
+        - mountPath: /etc/gitlab
+          name: gitlab-config-storage
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+        env:
+        - name: GITLAB_OMNIBUS_CONFIG
+          value: |
+            external_url 'http://192.168.49.2:30080'
+            gitlab_rails['gitlab_shell_ssh_port'] = 32222
       volumes:
-      - name: gitlab-data
+      - name: gitlab-data-storage
         persistentVolumeClaim:
           claimName: gitlab-data-pvc
-      - name: gitlab-logs
+      - name: gitlab-logs-storage
         persistentVolumeClaim:
           claimName: gitlab-logs-pvc
-      - name: gitlab-config
+      - name: gitlab-config-storage
         persistentVolumeClaim:
           claimName: gitlab-config-pvc
 ---
@@ -45,14 +57,18 @@ metadata:
   namespace: gitlab
 spec:
   type: NodePort
-  ports:
-    - name: http      # Nombre del puerto HTTP
-      port: 80        # Exponer el puerto HTTP
-      targetPort: 80
-      nodePort: 30080  # Puerto en el nodo
-    - name: https     # Nombre del puerto HTTPS
-      port: 443       # Exponer el puerto HTTPS
-      targetPort: 443
-      nodePort: 30443
   selector:
     app: gitlab
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+  - name: https
+    port: 443
+    targetPort: 443
+    nodePort: 30443
+  - name: ssh
+    port: 22
+    targetPort: 22
+    nodePort: 32222
